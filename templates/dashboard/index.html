@@ -1,0 +1,19 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if user.is_authenticated %}
+            <span class="me-2">Welcome, {{ user.username }}!</span>
+            <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-secondary">Logout</a>
+        {% endif %}
+    </div>
+</div>
+
+<p>This is the main dashboard. Charts will be displayed here.</p>
+
+{% endblock %}
