@@ -1,0 +1,9 @@
+{
+  "name": "vibe-mafia-testing",
+  "version": "1.0.0",
+  "description": "Test environment setup with Playwright MCP",
+  "scripts": {
+    "playwright": "npx @playwright/mcp@latest"
+  },
+  "devDependencies": {}
+}
