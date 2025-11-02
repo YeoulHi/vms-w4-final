@@ -14,11 +14,13 @@ urlpatterns = [
     path(
         "login/",
         auth_views.LoginView.as_view(
-            template_name="registration/login.html", redirect_authenticated_user=True
+            template_name="registration/login.html",
+            redirect_authenticated_user=True,
+            next_page="/dashboard/"
         ),
         name="login",
     ),
-    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("logout/", auth_views.LogoutView.as_view(next_page="/"), name="logout"),
     # Dashboard page and API at /dashboard/ and /api/dashboard/
     # The dashboard urls.py contains both page patterns and API patterns
     # They are differentiated by path, not by separate includes
