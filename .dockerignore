@@ -5,6 +5,12 @@ __pycache__/
 *.so
 .Python
 
+# Potential conflicting packages (prevent import path pollution)
+numpy
+numpy/
+pandas
+pandas/
+
 # Virtual environments
 venv/
 ENV/

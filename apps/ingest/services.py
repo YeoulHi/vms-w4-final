@@ -7,7 +7,7 @@ Implements the core logic for UserFlow #02 (Admin Excel Upload).
 from typing import List, Dict, Any, Tuple, Optional
 from decimal import Decimal
 
-import pandas as pd
+# Lazy import: pandas는 함수 내부에서 import (Django admin 로드 시 무거운 의존성 방지)
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -90,6 +90,8 @@ def parse_and_save_excel(file_obj: Any) -> Tuple[int, int, str]:
     Raises:
         ValidationError: If file validation fails
     """
+    import pandas as pd  # Lazy import: 함수 호출 시점에만 로드
+
     try:
         filename = file_obj.name.lower()
         if not any(filename.endswith(ext) for ext in ALLOWED_FILE_EXTENSIONS):
@@ -140,7 +142,7 @@ def parse_and_save_excel(file_obj: Any) -> Tuple[int, int, str]:
         raise ValidationError(f"Error processing file: {str(e)}")
 
 
-def _validate_columns(df: pd.DataFrame) -> None:
+def _validate_columns(df: "pd.DataFrame") -> None:
     """
     Validate that all required columns exist.
 
@@ -159,7 +161,7 @@ def _validate_columns(df: pd.DataFrame) -> None:
         )
 
 
-def _process_rows(df: pd.DataFrame) -> Dict[str, int]:
+def _process_rows(df: "pd.DataFrame") -> Dict[str, int]:
     """
     Process each row: normalize, validate, and upsert to database.
 
@@ -169,6 +171,8 @@ def _process_rows(df: pd.DataFrame) -> Dict[str, int]:
     Returns:
         dict: {"success_count": int, "failure_count": int}
     """
+    import pandas as pd  # Lazy import
+
     success_count = 0
     failure_count = 0
     failures = []
@@ -277,7 +281,7 @@ def _generate_summary_message(total_rows: int, success_count: int, failure_count
     return f"Total {total_rows} rows: {success_count} success, {failure_count} failed"
 
 
-def _detect_file_format(df: pd.DataFrame) -> str:
+def _detect_file_format(df: "pd.DataFrame") -> str:
     """
     파일 형식 감지: 표준 형식, department_kpi, publication_list, research_project, student_roster
 
@@ -315,7 +319,7 @@ def _detect_file_format(df: pd.DataFrame) -> str:
     return "unknown"
 
 
-def _is_korean_format(df: pd.DataFrame) -> bool:
+def _is_korean_format(df: "pd.DataFrame") -> bool:
     """
     감지: 한글 형식 파일인지 확인 (호환성 유지)
 
@@ -329,7 +333,7 @@ def _is_korean_format(df: pd.DataFrame) -> bool:
     return file_format != "standard"
 
 
-def _transform_korean_format(df: pd.DataFrame) -> pd.DataFrame:
+def _transform_korean_format(df: "pd.DataFrame") -> "pd.DataFrame":
     """
     한글 형식 DataFrame을 표준 형식으로 변환 (department_kpi.csv)
 
@@ -343,7 +347,7 @@ def _transform_korean_format(df: pd.DataFrame) -> pd.DataFrame:
         df: 한글 형식 DataFrame
 
     Returns:
-        pd.DataFrame: 표준 형식으로 변환된 DataFrame (Melt 형태)
+        "pd.DataFrame": 표준 형식으로 변환된 DataFrame (Melt 형태)
     """
     # 컬럼 이름 매핑
     column_rename = {
@@ -385,7 +389,7 @@ def _transform_korean_format(df: pd.DataFrame) -> pd.DataFrame:
     return df_result
 
 
-def _transform_publication_list(df: pd.DataFrame) -> pd.DataFrame:
+def _transform_publication_list(df: "pd.DataFrame") -> "pd.DataFrame":
     """
     publication_list.csv를 표준 형식으로 변환
 
@@ -396,7 +400,7 @@ def _transform_publication_list(df: pd.DataFrame) -> pd.DataFrame:
         df: 논문 목록 DataFrame
 
     Returns:
-        pd.DataFrame: 표준 형식으로 변환된 DataFrame
+        "pd.DataFrame": 표준 형식으로 변환된 DataFrame
     """
     # 게재일에서 연도 추출
     df["year"] = pd.to_datetime(df["게재일"], errors="coerce").dt.year.astype(int)
@@ -416,7 +420,7 @@ def _transform_publication_list(df: pd.DataFrame) -> pd.DataFrame:
     return df_result
 
 
-def _transform_research_project(df: pd.DataFrame) -> pd.DataFrame:
+def _transform_research_project(df: "pd.DataFrame") -> "pd.DataFrame":
     """
     research_project_data.csv를 표준 형식으로 변환
 
@@ -427,7 +431,7 @@ def _transform_research_project(df: pd.DataFrame) -> pd.DataFrame:
         df: 연구 과제 DataFrame
 
     Returns:
-        pd.DataFrame: 표준 형식으로 변환된 DataFrame
+        "pd.DataFrame": 표준 형식으로 변환된 DataFrame
     """
     # 집행일자에서 연도 추출
     df["year"] = pd.to_datetime(df["집행일자"], errors="coerce").dt.year.astype(int)
@@ -450,7 +454,7 @@ def _transform_research_project(df: pd.DataFrame) -> pd.DataFrame:
     return df_result
 
 
-def _transform_student_roster(df: pd.DataFrame) -> pd.DataFrame:
+def _transform_student_roster(df: "pd.DataFrame") -> "pd.DataFrame":
     """
     student_roster.csv를 표준 형식으로 변환
 
@@ -461,7 +465,7 @@ def _transform_student_roster(df: pd.DataFrame) -> pd.DataFrame:
         df: 학생 명단 DataFrame
 
     Returns:
-        pd.DataFrame: 표준 형식으로 변환된 DataFrame
+        "pd.DataFrame": 표준 형식으로 변환된 DataFrame
     """
     # 입학년도를 연도로 사용
     df["year"] = df["입학년도"].astype(int)
