@@ -6,10 +6,11 @@ Follows the specification in docs/4.userflow.md and docs/5.dataflow.md
 
 from typing import Any, Dict
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.contrib.auth.mixins import LoginRequiredMixin
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -17,8 +18,7 @@ from rest_framework import status
 from .services import get_dashboard_data, to_chartjs
 
 
-@method_decorator(login_required, name="dispatch")
-class DashboardView(TemplateView):
+class DashboardView(LoginRequiredMixin, TemplateView):
     """Dashboard page view - displays chart data visualization.
 
     This view renders the main dashboard template with default filter values.
@@ -26,9 +26,12 @@ class DashboardView(TemplateView):
 
     Attributes:
         template_name: Path to the dashboard template
+        login_url: URL to redirect unauthenticated users (default: /login/)
     """
 
     template_name = "dashboard/index.html"
+    login_url = "login"
+    redirect_field_name = "next"
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         """Add default filter values to template context.
@@ -41,34 +44,42 @@ class DashboardView(TemplateView):
         """
         context = super().get_context_data(**kwargs)
 
-        # Get all unique years from database, sorted descending
-        from apps.ingest.models import MetricRecord
+        try:
+            # Get all unique years from database, sorted descending
+            from apps.ingest.models import MetricRecord
 
-        all_years = (
-            MetricRecord.objects.values_list("year", flat=True).distinct().order_by("-year")
-        )
-        all_years_list = list(all_years)
+            all_years = (
+                MetricRecord.objects.values_list("year", flat=True).distinct().order_by("-year")
+            )
+            all_years_list = list(all_years)
 
-        # Get latest 3 years
-        latest_three_years = all_years_list[:3] if all_years_list else []
+            # Get latest 3 years
+            latest_three_years = all_years_list[:3] if all_years_list else []
 
-        # Get all departments
-        all_departments = (
-            MetricRecord.objects.values_list("department", flat=True).distinct().order_by("department")
-        )
+            # Get all departments
+            all_departments = (
+                MetricRecord.objects.values_list("department", flat=True).distinct().order_by("department")
+            )
 
-        # Build default_filters context for frontend
-        context["default_filters"] = {
-            "years": latest_three_years,
-            "all_years": all_years_list,
-            "departments": list(all_departments),
-            "default_year": latest_three_years[0] if latest_three_years else None,
-        }
+            # Build default_filters context for frontend
+            context["default_filters"] = {
+                "years": latest_three_years,
+                "all_years": all_years_list,
+                "departments": list(all_departments),
+                "default_year": latest_three_years[0] if latest_three_years else None,
+            }
+        except Exception as e:
+            # Handle database errors gracefully
+            context["default_filters"] = {
+                "years": [],
+                "all_years": [],
+                "departments": [],
+                "default_year": None,
+            }
 
         return context
 
 
-@method_decorator(login_required, name="dispatch")
 class ChartDataAPIView(APIView):
     """API endpoint for retrieving chart data.
 
@@ -77,6 +88,15 @@ class ChartDataAPIView(APIView):
 
     URL: GET /api/dashboard/chart-data/?year=YYYY&department=DEPT_NAME
     """
+
+    def dispatch(self, request, *args, **kwargs):
+        """Check authentication before processing request."""
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "unauthorized", "message": "인증이 필요합니다."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request: Any) -> Response:
         """Handle GET request for chart data.
