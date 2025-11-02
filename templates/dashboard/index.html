@@ -1,18 +1,260 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}대시보드 - 성과 지표{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Dashboard</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        {% if user.is_authenticated %}
-            <span class="me-2">Welcome, {{ user.username }}!</span>
-            <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-secondary">Logout</a>
-        {% endif %}
+<div class="container-fluid mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">대시보드</h1>
+                {% if user.is_authenticated %}
+                    <div>
+                        <span class="me-3">{{ user.username }}님 환영합니다!</span>
+                        <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-secondary">로그아웃</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Filter Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">필터</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Year Filter -->
+                        <div class="col-md-6">
+                            <label for="yearSelect" class="form-label">연도</label>
+                            <select class="form-select" id="yearSelect">
+                                <option value="">전체 연도</option>
+                                {% if default_filters.all_years %}
+                                    {% for year in default_filters.all_years %}
+                                    <option value="{{ year }}" {% if year == default_filters.default_year %}selected{% endif %}>
+                                        {{ year }}년
+                                    </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <!-- Department Filter -->
+                        <div class="col-md-6">
+                            <label for="departmentSelect" class="form-label">학과</label>
+                            <select class="form-select" id="departmentSelect">
+                                <option value="">전체 학과</option>
+                                {% if default_filters.departments %}
+                                    {% for dept in default_filters.departments %}
+                                    <option value="{{ dept }}">{{ dept }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">성과 지표 시각화</h5>
+                </div>
+                <div class="card-body">
+                    <div id="chartContainer" style="position: relative; height: 400px;">
+                        <canvas id="dashboardChart"></canvas>
+                    </div>
+                    <div id="noDataMessage" class="text-center text-muted py-5" style="display: none;">
+                        <p>표시할 데이터가 없습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<p>This is the main dashboard. Charts will be displayed here.</p>
+<!-- Pass default filters from Django context to JavaScript -->
+<script id="default-filters" type="application/json">
+    {{ default_filters|safe }}
+</script>
 
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+<script>
+    /**
+     * Dashboard Chart Initialization and Management
+     *
+     * This script handles:
+     * - Reading default filters from Django template context
+     * - Initial chart rendering with default filters
+     * - Filter change detection and chart update
+     * - API communication for chart data
+     */
+
+    // Global chart instance
+    let chartInstance = null;
+
+    /**
+     * Fetch chart data from API
+     *
+     * @param {Object} filters - Filter parameters {year, department}
+     * @returns {Promise<Object>} Chart.js compatible data
+     */
+    async function fetchChartData(filters = {}) {
+        const params = new URLSearchParams();
+
+        if (filters.year && filters.year !== '') {
+            params.append('year', filters.year);
+        }
+        if (filters.department && filters.department !== '') {
+            params.append('department', filters.department);
+        }
+
+        try {
+            const response = await fetch(`/api/dashboard/chart-data/?${params.toString()}`);
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to fetch chart data:', error);
+            return { labels: [], datasets: [] };
+        }
+    }
+
+    /**
+     * Render chart with given data
+     *
+     * @param {Object} data - Chart.js compatible data {labels, datasets}
+     */
+    function renderChart(data) {
+        const ctx = document.getElementById('dashboardChart').getContext('2d');
+
+        // Show/hide no data message
+        const noDataMessage = document.getElementById('noDataMessage');
+        const chartContainer = document.getElementById('chartContainer');
+
+        if (!data.labels || data.labels.length === 0) {
+            noDataMessage.style.display = 'block';
+            chartContainer.style.display = 'none';
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+            return;
+        }
+
+        noDataMessage.style.display = 'none';
+        chartContainer.style.display = 'block';
+
+        // Destroy existing chart
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        // Create new chart
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: data.datasets.map((dataset, index) => ({
+                    ...dataset,
+                    borderColor: dataset.backgroundColor,
+                    backgroundColor: dataset.backgroundColor.replace('rgb', 'rgba').replace(')', ', 0.1)'),
+                    tension: 0.3,
+                    fill: false,
+                    borderWidth: 2,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Update chart based on current filter values
+     */
+    async function updateChart() {
+        const yearSelect = document.getElementById('yearSelect');
+        const departmentSelect = document.getElementById('departmentSelect');
+
+        const filters = {
+            year: yearSelect.value,
+            department: departmentSelect.value
+        };
+
+        const data = await fetchChartData(filters);
+        renderChart(data);
+    }
+
+    /**
+     * Initialize dashboard on page load
+     */
+    function initializeDashboard() {
+        // Parse default filters from template context
+        const filterScript = document.getElementById('default-filters');
+        let defaultFilters = {};
+
+        try {
+            defaultFilters = JSON.parse(filterScript.textContent);
+        } catch (error) {
+            console.error('Failed to parse default filters:', error);
+        }
+
+        // Set default year in dropdown
+        const yearSelect = document.getElementById('yearSelect');
+        if (defaultFilters.default_year) {
+            yearSelect.value = defaultFilters.default_year;
+        }
+
+        // Load initial chart with default filters
+        updateChart();
+
+        // Attach event listeners
+        yearSelect.addEventListener('change', updateChart);
+        document.getElementById('departmentSelect').addEventListener('change', updateChart);
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+</script>
+
+<style>
+    .card {
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid #ddd;
+    }
+
+    #chartContainer {
+        margin: 20px 0;
+    }
+
+    #noDataMessage {
+        color: #999;
+        font-size: 16px;
+    }
+</style>
 {% endblock %}
