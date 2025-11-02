@@ -36,6 +36,9 @@ db.sqlite3
 db.sqlite3-journal
 /media
 /staticfiles
+/static
+*.pyc
+__pycache__/
 
 # Testing
 .pytest_cache/
@@ -72,6 +75,10 @@ _notepad.md
 .DS_Store
 Thumbs.db
 
+
+# Railway / Deployment
+.railway/
+railway.json
 
 # START Ruler Generated Files
 /.codex/config.toml
