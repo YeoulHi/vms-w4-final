@@ -1,28 +1,55 @@
 {% extends 'base.html' %}
 
-{% block title %}Login{% endblock %}
+{% block title %}로그인 - 대시보드{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
-        <h2 class="mt-5">Login</h2>
-        <form method="post" class="mt-4">
-            {% csrf_token %}
-            {% if form.errors %}
-                <div class="alert alert-danger">
-                    Your username and password didn't match. Please try again.
+    <div class="col-md-5">
+        <div class="card mt-5">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">📊 대시보드 로그인</h2>
+
+                {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>로그인 실패</strong>
+                        <p class="mb-0">사용자명 또는 비밀번호가 일치하지 않습니다.</p>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">사용자명</label>
+                        <input type="text" name="username" class="form-control {% if form.username.errors %}is-invalid{% endif %}" id="id_username" required autofocus>
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback d-block">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="id_password" class="form-label">비밀번호</label>
+                        <input type="password" name="password" class="form-control {% if form.password.errors %}is-invalid{% endif %}" id="id_password" required>
+                        {% if form.password.errors %}
+                            <div class="invalid-feedback d-block">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">로그인</button>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="alert alert-info small" role="alert">
+                    <strong>테스트 계정:</strong>
+                    <ul class="mb-0 ps-3">
+                        <li>사용자명: admin</li>
+                        <li>비밀번호: testpass123</li>
+                    </ul>
                 </div>
-            {% endif %}
-            <div class="mb-3">
-                <label for="id_username" class="form-label">Username</label>
-                <input type="text" name="username" class="form-control" id="id_username" required>
             </div>
-            <div class="mb-3">
-                <label for="id_password" class="form-label">Password</label>
-                <input type="password" name="password" class="form-control" id="id_password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Login</button>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}
