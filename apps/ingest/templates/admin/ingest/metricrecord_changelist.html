@@ -1,0 +1,8 @@
+{% extends "admin/change_list.html" %}
+
+{% block search_form %}
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'admin:ingest_metricrecord_upload' %}" class="button">📤 Upload Excel Data</a>
+    </div>
+    {{ block.super }}
+{% endblock %}
