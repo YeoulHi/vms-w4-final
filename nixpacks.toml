@@ -3,5 +3,12 @@
 nixPkgs = ["python313", "python313Packages.pip"]
 
 [phases.install]
-# Nix 환경에서 pip 설치 허용
-cmds = ["pip install --break-system-packages -r requirements.txt"]
+# Nix 환경에서 pip 설치 허용 및 PATH 확인
+cmds = [
+  "pip install --break-system-packages -r requirements.txt",
+  "python -m pip install --break-system-packages gunicorn"
+]
+
+[start]
+# Python 모듈로 gunicorn 실행 (PATH 문제 회피)
+cmd = "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python -m gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
