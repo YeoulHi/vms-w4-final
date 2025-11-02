@@ -4,8 +4,12 @@ This module handles Excel/CSV file parsing, data normalization, and database UPS
 Implements the core logic for UserFlow #02 (Admin Excel Upload).
 """
 
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, TYPE_CHECKING
 from decimal import Decimal
+
+# TYPE_CHECKING: 타입 체커에게만 pandas를 알림 (런타임에는 실행 안됨)
+if TYPE_CHECKING:
+    import pandas as pd
 
 # Lazy import: pandas는 함수 내부에서 import (Django admin 로드 시 무거운 의존성 방지)
 from django.core.exceptions import ValidationError
@@ -197,7 +201,7 @@ def _process_rows(df: "pd.DataFrame") -> Dict[str, int]:
     return {"success_count": success_count, "failure_count": failure_count, "failures": failures}
 
 
-def _normalize_row(row: pd.Series) -> Dict[str, Any]:
+def _normalize_row(row: "pd.Series") -> Dict[str, Any]:
     """
     Normalize row data: clean strings, cast types, apply domain mappings.
 
