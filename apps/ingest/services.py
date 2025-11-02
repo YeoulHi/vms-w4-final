@@ -15,11 +15,24 @@ from .models import MetricRecord
 
 
 ALLOWED_DEPARTMENTS = {
+    # 영문 매핑
     "computer-science": "computer-science",
     "electronics": "electronics",
+    "korean-literature": "korean-literature",
+    "philosophy": "philosophy",
+    "industrial-engineering": "industrial-engineering",
+    "education": "education",
+    # 한글 매핑
+    "컴퓨터공학과": "computer-science",
+    "전자공학과": "electronics",
+    "국어국문학과": "korean-literature",
+    "철학과": "philosophy",
+    "산업공학과": "industrial-engineering",
+    "교육학과": "education",
 }
 
 ALLOWED_METRICS = {
+    # 기본 지표
     "paper": "PAPER",
     "budget": "BUDGET",
     "student": "STUDENT",
@@ -28,11 +41,40 @@ ALLOWED_METRICS = {
     "BUDGET": "BUDGET",
     "STUDENT": "STUDENT",
     "PROJECT": "PROJECT",
+    # department_kpi 지표
+    "employment_rate": "EMPLOYMENT_RATE",
+    "full_time_faculty": "FULL_TIME_FACULTY",
+    "visiting_faculty": "VISITING_FACULTY",
+    "tech_transfer_revenue": "TECH_TRANSFER_REVENUE",
+    "international_conference": "INTERNATIONAL_CONFERENCE",
+    "EMPLOYMENT_RATE": "EMPLOYMENT_RATE",
+    "FULL_TIME_FACULTY": "FULL_TIME_FACULTY",
+    "VISITING_FACULTY": "VISITING_FACULTY",
+    "TECH_TRANSFER_REVENUE": "TECH_TRANSFER_REVENUE",
+    "INTERNATIONAL_CONFERENCE": "INTERNATIONAL_CONFERENCE",
+    # publication_list 지표
+    "publication": "PUBLICATION",
+    "PUBLICATION": "PUBLICATION",
+    # research_project 지표
+    "research_budget": "RESEARCH_BUDGET",
+    "RESEARCH_BUDGET": "RESEARCH_BUDGET",
+    # student_roster 지표
+    "student_count": "STUDENT_COUNT",
+    "STUDENT_COUNT": "STUDENT_COUNT",
 }
 
 ALLOWED_FILE_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 REQUIRED_COLUMNS = {"year", "department", "metric_type", "value"}
 FAILURE_THRESHOLD_PERCENTAGE = 20
+
+# 한글 컬럼명 → metric_type 매핑
+KOREAN_COLUMN_MAPPING = {
+    "졸업생 취업률 (%)": "EMPLOYMENT_RATE",
+    "전임교원 수 (명)": "FULL_TIME_FACULTY",
+    "초빙교원 수 (명)": "VISITING_FACULTY",
+    "연간 기술이전 수입액 (억원)": "TECH_TRANSFER_REVENUE",
+    "국제학술대회 개최 횟수": "INTERNATIONAL_CONFERENCE",
+}
 
 
 def parse_and_save_excel(file_obj: Any) -> Tuple[int, int, str]:
@@ -60,7 +102,21 @@ def parse_and_save_excel(file_obj: Any) -> Tuple[int, int, str]:
         else:
             df = pd.read_excel(file_obj)
 
-        _validate_columns(df)
+        # 파일 형식 감지
+        file_format = _detect_file_format(df)
+
+        if file_format == "standard":
+            _validate_columns(df)
+        elif file_format == "department_kpi":
+            df = _transform_korean_format(df)
+        elif file_format == "publication_list":
+            df = _transform_publication_list(df)
+        elif file_format == "research_project":
+            df = _transform_research_project(df)
+        elif file_format == "student_roster":
+            df = _transform_student_roster(df)
+        else:
+            raise ValidationError("Unknown file format. Please check the file structure.")
 
         results = _process_rows(df)
 
@@ -219,3 +275,210 @@ def _generate_summary_message(total_rows: int, success_count: int, failure_count
         str: Summary message
     """
     return f"Total {total_rows} rows: {success_count} success, {failure_count} failed"
+
+
+def _detect_file_format(df: pd.DataFrame) -> str:
+    """
+    파일 형식 감지: 표준 형식, department_kpi, publication_list, research_project, student_roster
+
+    Args:
+        df: pandas DataFrame
+
+    Returns:
+        str: 파일 형식 종류
+    """
+    columns_set = set(df.columns)
+    columns_lower = {col.lower() for col in df.columns}
+
+    # 1. 표준 형식 체크
+    required_english = {"year", "department", "metric_type", "value"}
+    if required_english.issubset(columns_lower):
+        return "standard"
+
+    # 2. department_kpi 형식 체크
+    if {"평가년도", "단과대학", "학과"}.issubset(columns_set):
+        if "졸업생 취업률 (%)" in columns_set:
+            return "department_kpi"
+
+    # 3. publication_list 형식 체크
+    if {"논문ID", "게재일", "단과대학", "학과", "논문제목"}.issubset(columns_set):
+        return "publication_list"
+
+    # 4. research_project_data 형식 체크
+    if {"집행ID", "과제번호", "과제명", "연구책임자", "소속학과"}.issubset(columns_set):
+        return "research_project"
+
+    # 5. student_roster 형식 체크
+    if {"학번", "이름", "단과대학", "학과", "학년"}.issubset(columns_set):
+        return "student_roster"
+
+    return "unknown"
+
+
+def _is_korean_format(df: pd.DataFrame) -> bool:
+    """
+    감지: 한글 형식 파일인지 확인 (호환성 유지)
+
+    Args:
+        df: pandas DataFrame
+
+    Returns:
+        bool: 한글 형식이면 True, 영문 형식이면 False
+    """
+    file_format = _detect_file_format(df)
+    return file_format != "standard"
+
+
+def _transform_korean_format(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    한글 형식 DataFrame을 표준 형식으로 변환 (department_kpi.csv)
+
+    한글 형식:
+        평가년도, 단과대학, 학과, 졸업생 취업률 (%), 전임교원 수 (명), ...
+
+    표준 형식:
+        year, department, metric_type, value
+
+    Args:
+        df: 한글 형식 DataFrame
+
+    Returns:
+        pd.DataFrame: 표준 형식으로 변환된 DataFrame (Melt 형태)
+    """
+    # 컬럼 이름 매핑
+    column_rename = {
+        "평가년도": "year",
+        "단과대학": "college",
+        "학과": "department",
+    }
+
+    df_renamed = df.rename(columns=column_rename)
+
+    # 지표 컬럼들 (한글 → metric_type)
+    metric_columns = list(KOREAN_COLUMN_MAPPING.keys())
+
+    # ID 컬럼들 (year, college, department)
+    id_vars = ["year", "college", "department"]
+
+    # Melt: 와이드 형식 → 롱 형식
+    df_melted = df_renamed.melt(
+        id_vars=id_vars,
+        value_vars=metric_columns,
+        var_name="metric_column",
+        value_name="value"
+    )
+
+    # 한글 컬럼명 → metric_type 변환
+    df_melted["metric_type"] = df_melted["metric_column"].map(KOREAN_COLUMN_MAPPING)
+
+    # 부서명 정규화 (한글 → 영문)
+    df_melted["department"] = df_melted["department"].map(
+        lambda x: ALLOWED_DEPARTMENTS.get(x, x)
+    )
+
+    # 최종 컬럼 선택
+    df_result = df_melted[["year", "department", "metric_type", "value"]].copy()
+
+    # year를 정수로 변환
+    df_result["year"] = df_result["year"].astype(int)
+
+    return df_result
+
+
+def _transform_publication_list(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    publication_list.csv를 표준 형식으로 변환
+
+    입력: 논문ID, 게재일, 단과대학, 학과, 논문제목, ...
+    출력: year, department, metric_type, value (각 학과별 논문 수)
+
+    Args:
+        df: 논문 목록 DataFrame
+
+    Returns:
+        pd.DataFrame: 표준 형식으로 변환된 DataFrame
+    """
+    # 게재일에서 연도 추출
+    df["year"] = pd.to_datetime(df["게재일"], errors="coerce").dt.year.astype(int)
+
+    # 부서명 정규화
+    df["department"] = df["학과"].map(lambda x: ALLOWED_DEPARTMENTS.get(x, x))
+
+    # 학과별, 연도별 논문 수 집계
+    df_grouped = df.groupby(["year", "department"]).size().reset_index(name="value")
+
+    # metric_type 추가
+    df_grouped["metric_type"] = "PUBLICATION"
+
+    # 최종 컬럼 선택
+    df_result = df_grouped[["year", "department", "metric_type", "value"]].copy()
+
+    return df_result
+
+
+def _transform_research_project(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    research_project_data.csv를 표준 형식으로 변환
+
+    입력: 집행ID, 과제번호, 과제명, 연구책임자, 소속학과, 집행일자, 집행금액, ...
+    출력: year, department, metric_type, value (연도별 연구비)
+
+    Args:
+        df: 연구 과제 DataFrame
+
+    Returns:
+        pd.DataFrame: 표준 형식으로 변환된 DataFrame
+    """
+    # 집행일자에서 연도 추출
+    df["year"] = pd.to_datetime(df["집행일자"], errors="coerce").dt.year.astype(int)
+
+    # 부서명 정규화
+    df["department"] = df["소속학과"].map(lambda x: ALLOWED_DEPARTMENTS.get(x, x))
+
+    # 집행금액을 숫자로 변환
+    df["execution_amount"] = pd.to_numeric(df["집행금액"], errors="coerce")
+
+    # 학과별, 연도별 연구비 합계
+    df_grouped = df.groupby(["year", "department"])["execution_amount"].sum().reset_index(name="value")
+
+    # metric_type 추가
+    df_grouped["metric_type"] = "RESEARCH_BUDGET"
+
+    # 최종 컬럼 선택
+    df_result = df_grouped[["year", "department", "metric_type", "value"]].copy()
+
+    return df_result
+
+
+def _transform_student_roster(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    student_roster.csv를 표준 형식으로 변환
+
+    입력: 학번, 이름, 단과대학, 학과, 학년, 입학년도, 학적상태, ...
+    출력: year, department, metric_type, value (연도별 학생 수)
+
+    Args:
+        df: 학생 명단 DataFrame
+
+    Returns:
+        pd.DataFrame: 표준 형식으로 변환된 DataFrame
+    """
+    # 입학년도를 연도로 사용
+    df["year"] = df["입학년도"].astype(int)
+
+    # 부서명 정규화
+    df["department"] = df["학과"].map(lambda x: ALLOWED_DEPARTMENTS.get(x, x))
+
+    # 학적상태가 '재학'인 학생만 카운트
+    df_active = df[df["학적상태"] == "재학"].copy()
+
+    # 학과별, 연도별 학생 수 집계
+    df_grouped = df_active.groupby(["year", "department"]).size().reset_index(name="value")
+
+    # metric_type 추가
+    df_grouped["metric_type"] = "STUDENT_COUNT"
+
+    # 최종 컬럼 선택
+    df_result = df_grouped[["year", "department", "metric_type", "value"]].copy()
+
+    return df_result
