@@ -6,7 +6,7 @@ Follows the specification in docs/5.dataflow.md and docs/spec/003.
 Example:
     from apps.dashboard.services import get_dashboard_data, to_chartjs
 
-    data = get_dashboard_data(year=2024, department="ôè0õYü")
+    data = get_dashboard_data(year=2024, department="ì»´í“¨í„°ê³µí•™")
     chart_json = to_chartjs(data)
 """
 

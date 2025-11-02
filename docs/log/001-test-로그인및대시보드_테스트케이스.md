@@ -348,6 +348,9 @@ python manage.py runserver
 }
 ```
 
+$pythonPath = 'C:\Users\audrm\AppData\Local\Programs\Python\Python313' 
+[System.Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';' + $pythonPath, 'User')
+
 ---
 
 ## 📝 테스트 결과 기록

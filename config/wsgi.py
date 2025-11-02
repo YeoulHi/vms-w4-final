@@ -8,6 +8,12 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
 """
 
 import os
+from pathlib import Path
+
+# Load environment variables from .env.local
+from dotenv import load_dotenv
+env_path = Path(__file__).resolve().parent.parent / '.env.local'
+load_dotenv(env_path)
 
 from django.core.wsgi import get_wsgi_application
 
