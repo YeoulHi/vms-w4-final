@@ -9,6 +9,7 @@ from django.urls import path, include
 from django.views.generic import RedirectView, TemplateView
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
+from apps.dashboard.views import logout_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -21,7 +22,7 @@ urlpatterns = [
         ),
         name="login",
     ),
-    path("logout/", auth_views.LogoutView.as_view(next_page="/login/"), name="logout"),
+    path("logout/", logout_view, name="logout"),
     # Dashboard page and API at /dashboard/ and /api/dashboard/
     # The dashboard urls.py contains both page patterns and API patterns
     # They are differentiated by path, not by separate includes

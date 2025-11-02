@@ -7,7 +7,19 @@
 <div class="container-fluid mt-5">
     <div class="row">
         <div class="col-md-12">
-            <h1 class="mb-4">대시보드</h1>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">대시보드</h1>
+                <div>
+                    {% if user.is_authenticated %}
+                    <span class="me-3">{{ user.username }}님 환영합니다!</span>
+                    <a href="/admin/login/?next=/admin/ingest/metricrecord/" class="btn btn-sm btn-outline-primary me-2">관리자</a>
+                    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">로그아웃</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
 
             <!-- Filter Section -->
             <div class="card mb-4">

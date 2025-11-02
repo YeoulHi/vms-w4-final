@@ -14,6 +14,10 @@ from pathlib import Path
 
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env.local
+load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env.local'))
 
 
 
@@ -33,17 +37,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 
-SECRET_KEY = 'django-insecure-7zmhq1y6lhc0hp)nmgvbr5ytc&4zh=melo4x=c-nr=+nq7xp8u'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-7zmhq1y6lhc0hp)nmgvbr5ytc&4zh=melo4x=c-nr=+nq7xp8u')
 
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 
@@ -84,6 +88,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
 
     'django.middleware.security.SecurityMiddleware',
+
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Whitenoise for static files
 
     'django.contrib.sessions.middleware.SessionMiddleware',
 
@@ -244,7 +250,11 @@ USE_TZ = True
 
 
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 

@@ -9,8 +9,11 @@ from typing import Any, Dict
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
 from django.utils.decorators import method_decorator
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -140,3 +143,15 @@ class ChartDataAPIView(APIView):
                 {"error": "server_error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+@require_POST
+@csrf_protect
+def logout_view(request):
+    """Custom logout view that logs out the user and redirects to login page.
+
+    This view handles POST requests only and redirects to /login/?next=/dashboard/
+    after logging out the user.
+    """
+    logout(request)
+    return redirect('/login/?next=/dashboard/')

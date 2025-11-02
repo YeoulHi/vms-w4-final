@@ -12,7 +12,11 @@
                 {% if user.is_authenticated %}
                     <div>
                         <span class="me-3">{{ user.username }}님 환영합니다!</span>
-                        <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-secondary">로그아웃</a>
+                        <a href="/admin/login/?next=/admin/ingest/metricrecord/" class="btn btn-sm btn-outline-primary me-2">관리자</a>
+                        <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">로그아웃</button>
+                        </form>
                     </div>
                 {% endif %}
             </div>
@@ -61,7 +65,7 @@
                     <h5 class="mb-0">성과 지표 시각화</h5>
                 </div>
                 <div class="card-body">
-                    <div id="chartContainer" style="position: relative; height: 400px;">
+                    <div id="chartContainer" style="position: relative; height: 600px;">
                         <canvas id="dashboardChart"></canvas>
                     </div>
                     <div id="noDataMessage" class="text-center text-muted py-5" style="display: none;">
@@ -155,34 +159,100 @@
             chartInstance.destroy();
         }
 
+        // Determine chart type based on data points
+        const chartType = data.labels.length === 1 ? 'bar' : 'line';
+
         // Create new chart
         chartInstance = new Chart(ctx, {
-            type: 'line',
+            type: chartType,
             data: {
                 labels: data.labels,
                 datasets: data.datasets.map((dataset, index) => ({
                     ...dataset,
                     borderColor: dataset.backgroundColor,
-                    backgroundColor: dataset.backgroundColor.replace('rgb', 'rgba').replace(')', ', 0.1)'),
+                    backgroundColor: chartType === 'bar'
+                        ? dataset.backgroundColor.replace('rgb', 'rgba').replace(')', ', 0.7)')
+                        : dataset.backgroundColor.replace('rgb', 'rgba').replace(')', ', 0.1)'),
                     tension: 0.3,
                     fill: false,
-                    borderWidth: 2,
+                    borderWidth: chartType === 'bar' ? 0 : 3,
+                    pointRadius: chartType === 'bar' ? 0 : 6,
+                    pointHoverRadius: chartType === 'bar' ? 0 : 8,
+                    pointBorderWidth: chartType === 'bar' ? 0 : 2,
+                    pointBackgroundColor: dataset.backgroundColor,
+                    pointBorderColor: '#fff',
                 }))
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
                     legend: {
-                        position: 'top',
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 15,
+                            font: {
+                                size: 11
+                            },
+                            usePointStyle: true,
+                        }
                     },
                     title: {
                         display: false,
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toLocaleString();
+                                }
+                                return label;
+                            }
+                        }
                     }
                 },
                 scales: {
-                    y: {
+                    y: chartType === 'bar' ? {
                         beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString();
+                            }
+                        }
+                    } : {
+                        type: 'logarithmic',
+                        beginAtZero: false,
+                        min: 0.1,
+                        ticks: {
+                            callback: function(value, index, ticks) {
+                                if (value === 0.1 || value === 1 || value === 10 || value === 100 ||
+                                    value === 1000 || value === 10000 || value === 100000 ||
+                                    value === 1000000 || value === 10000000 || value === 100000000) {
+                                    return value.toLocaleString();
+                                }
+                                return null;
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
                     }
                 }
             }
