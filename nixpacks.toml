@@ -7,6 +7,5 @@ nixPkgs = ["python313", "python313Packages.pip"]
 # requirements.txt에 gunicorn이 포함되어 있으므로 별도 설치 불필요
 cmds = ["pip install --break-system-packages -r requirements.txt"]
 
-[start]
-# Python 모듈로 gunicorn 실행 (PATH 문제 회피)
-cmd = "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python -m gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
+# [start] 섹션 제거 - Procfile 사용
+# Nixpacks는 Procfile을 자동으로 인식하여 올바른 가상환경에서 실행
