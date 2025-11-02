@@ -165,22 +165,46 @@ if os.getenv('USE_SQLITE', 'false').lower() == 'true' or 'test' in sys.argv:
         }
     }
 else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', 'postgres'),
-            'USER': os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'hipzbvbddtmsqkhnrfbk.supabase.co'),
-            'PORT': os.getenv('DB_PORT', '5432'),
-            'ATOMIC_REQUESTS': True,
-            'CONN_MAX_AGE': 600,
-            'OPTIONS': {
-                'connect_timeout': 10,
-                'options': '-c statement_timeout=30000',
-            },
+    # Supabase PostgreSQL 연결 설정
+    # Django migrate는 Session Pooler(port 5432) 또는 Direct Connection 필요
+    # Transaction Pooler(port 6543)는 DDL 작업 불가
+    import dj_database_url
+
+    database_url = os.getenv('DATABASE_URL')
+
+    if database_url:
+        # DATABASE_URL이 제공된 경우 파싱 (Railway 등)
+        DATABASES = {
+            'default': dj_database_url.config(
+                default=database_url,
+                conn_max_age=600,
+                conn_health_checks=True,
+            )
         }
-    }
+        # SSL 설정 추가
+        DATABASES['default']['OPTIONS'] = {
+            'sslmode': 'require',
+            'connect_timeout': 10,
+        }
+    else:
+        # 환경 변수로 개별 설정
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.getenv('DB_NAME', 'postgres'),
+                'USER': os.getenv('DB_USER', 'postgres'),
+                'PASSWORD': os.getenv('DB_PASSWORD', ''),
+                # Session Pooler 또는 Direct Connection 사용 (port 5432)
+                'HOST': os.getenv('DB_HOST', 'aws-0-ap-northeast-2.pooler.supabase.com'),
+                'PORT': os.getenv('DB_PORT', '5432'),
+                'ATOMIC_REQUESTS': True,
+                'CONN_MAX_AGE': 600,
+                'OPTIONS': {
+                    'sslmode': 'require',
+                    'connect_timeout': 10,
+                },
+            }
+        }
 
 
 
