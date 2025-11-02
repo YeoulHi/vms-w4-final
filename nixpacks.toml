@@ -3,5 +3,5 @@
 nixPkgs = ["python313", "python313Packages.pip"]
 
 [phases.install]
-# pip으로 Python 의존성 설치 (npm 대신)
-cmds = ["pip install -r requirements.txt"]
+# Nix 환경에서 pip 설치 허용
+cmds = ["pip install --break-system-packages -r requirements.txt"]
