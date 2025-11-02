@@ -1,78 +1,57 @@
 # Django Admin 액션 규칙
 
-## Admin 파일 업로드 액션 패턴
+## 파일 업로드 커스텀 URL + View
 
 ```python
-from django.contrib import admin, messages
-from apps.ingest.models import ExcelUpload
-from apps.ingest.services import parse_excel_defensively, save_to_db
+class MetricRecordAdmin(admin.ModelAdmin):
+    def get_urls(self):
+        urls = super().get_urls()
+        return [
+            path("upload/", self.admin_site.admin_view(self.upload_excel),
+                 name="ingest_metricrecord_upload"),
+        ] + urls
 
-@admin.action(description="선택된 파일 파싱 및 DB 저장")
-def parse_and_save(modeladmin, request, queryset):
-    success_count = 0
-    for upload in queryset:
-        try:
-            data, errors = parse_excel_defensively(upload.file.path)
+    def upload_excel(self, request):
+        if request.method == "POST":
+            form = ExcelUploadForm(request.POST, request.FILES)
+            if form.is_valid():
+                try:
+                    file_obj = request.FILES["file"]
+                    success_count, failure_count, message = parse_and_save_excel(file_obj)
+                    messages.success(request, f"Upload complete: {message}")
+                    return HttpResponseRedirect(reverse("admin:ingest_metricrecord_changelist"))
+                except ValidationError as e:
+                    messages.error(request, f"Upload failed: {str(e)}")
+        else:
+            form = ExcelUploadForm()
 
-            if errors:
-                messages.error(request, f"{upload.file}: {', '.join(errors)}")
-                continue
-
-            saved = save_to_db(data)
-            upload.parsed_status = 'success'
-            upload.save()
-
-            success_count += 1
-            messages.success(request, f"{upload.file}: {saved}개 레코드 저장")
-
-        except Exception as e:
-            upload.parsed_status = 'failed'
-            upload.save()
-            messages.error(request, f"{upload.file}: {e}")
-
-    messages.info(request, f"총 {success_count}개 파일 처리 완료")
-
-
-@admin.register(ExcelUpload)
-class ExcelUploadAdmin(admin.ModelAdmin):
-    list_display = ['file', 'uploaded_at', 'parsed_status']
-    list_filter = ['parsed_status', 'uploaded_at']
-    actions = [parse_and_save]
-
-    def get_readonly_fields(self, request):
-        return ['parsed_status']
+        return TemplateResponse(request, "admin/ingest/upload.html", {"form": form})
 ```
 
-## 액션 설계 원칙
-
-1. **한 가지 역할만** (파싱, 저장 등)
-2. **에러 처리 필수** (try-except)
-3. **사용자 피드백** (messages)
-4. **상태 기록** (parsed_status)
-5. **로깅** (logger.info/error)
-
-## 자주 사용하는 액션
+## 파일 업로드 Form (DB 테이블 없음)
 
 ```python
-# 상태 변경
-@admin.action(description="상태를 '성공'으로 변경")
-def mark_success(modeladmin, request, queryset):
-    count = queryset.update(parsed_status='success')
-    messages.success(request, f"{count}개 항목 업데이트 완료")
+class ExcelUploadForm(forms.Form):
+    """DB 테이블 생성 안 하는 폼"""
+    file = forms.FileField(
+        label="Excel/CSV File",
+        widget=forms.FileInput(attrs={"accept": ".xlsx,.xls,.csv"})
+    )
 
-# 데이터 재처리
-@admin.action(description="선택된 항목 재파싱")
-def reparse(modeladmin, request, queryset):
-    queryset.update(parsed_status='pending')
-    messages.info(request, "재파싱 대기 중")
+    def clean_file(self):
+        file = self.cleaned_data["file"]
+        allowed = {'.xlsx', '.xls', '.csv'}
+        if not any(file.name.lower().endswith(ext) for ext in allowed):
+            raise ValidationError("File format not allowed")
+        return file
 ```
 
-## Admin 조회 최적화
+## 권한 제어
 
 ```python
-class ExcelUploadAdmin(admin.ModelAdmin):
-    list_select_related = ['user']  # FK 조회 최적화
-    list_prefetch_related = ['chartdata_set']  # M2M/역 관계 최적화
-    search_fields = ['file']
-    date_hierarchy = 'uploaded_at'  # 날짜별 필터링
+def has_add_permission(self, request):
+    return False  # 직접 추가 비활성화 (Upload만 사용)
+
+def has_change_permission(self, request, obj=None):
+    return request.user.is_staff  # Staff만 수정 가능
 ```
