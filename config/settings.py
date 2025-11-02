@@ -175,6 +175,10 @@ else:
             'PORT': os.getenv('DB_PORT', '5432'),
             'ATOMIC_REQUESTS': True,
             'CONN_MAX_AGE': 600,
+            'OPTIONS': {
+                'connect_timeout': 10,
+                'options': '-c statement_timeout=30000',
+            },
         }
     }
 
