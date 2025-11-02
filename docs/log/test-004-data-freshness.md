@@ -16,16 +16,20 @@ UC-004 데이터 반영 정책은 "업로드 후 대시보드에 데이터가 �
 ### 1. 로컬 개발 DB 설정 확인
 
 ```bash
-# SQLite 기본값 확인
-python manage.py showmigrations ingest
+# 프로젝트 루트에서 마이그레이션 파일 확인
+ls apps/ingest/migrations/
 ```
 
 출력 예:
 ```
-ingest
- [X] 0001_initial
- [X] 0002_add_compound_index
+__init__.py
+0001_initial.py
+0002_add_compound_index.py
 ```
+
+**참고**: Supabase 연결이 불가능한 경우, 로컬 SQLite로 테스트 가능합니다.
+- 설정: `config/settings.py`에서 `DATABASES['default']['ENGINE']` 확인
+- 로컬 SQLite 사용 시: `python manage.py migrate` 후 테스트 진행
 
 ### 2. Admin 계정 생성 (미존재 시)
 
