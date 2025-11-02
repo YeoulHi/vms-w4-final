@@ -1,0 +1,3 @@
+[phases.setup]
+# python313과 python313Packages.pip을 명시적으로 설치합니다.
+nixPkgs = ["python313", "python313Packages.pip"]
