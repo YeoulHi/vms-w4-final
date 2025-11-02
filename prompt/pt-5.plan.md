@@ -9,7 +9,8 @@
 완성된 설계를 다음과 같이 구성하여 유스케이스 문서와 같은 경로에 `plan.md`로 저장한다.
 - 개요: 모듈 이름, 위치, 간략한 설명을 포함한 목록
 - Diagram: mermaid 문법을 사용하여 모듈간 관계를 시각화
-4. `.ruler/` 의 적절한 rule 을 참조하여 plan 문서를 작성한다
+4. `.ruler/` , `.docs/rules`의 적절한 rule 을 참조하여 plan 문서를 작성한다
+- 
 - Implementation Plan: 각 모듈의 구체적인 구현 계획. presentation의 경우 qa sheet를, business logic의 경우 unit test를 포함.
 
 
