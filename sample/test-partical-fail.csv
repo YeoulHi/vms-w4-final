@@ -1,0 +1,4 @@
+year,department,metric_type,value
+2025,computer-science,PAPER,30
+2025,computer-science,BUDGET,invalid
+2025,electronics,PAPER,18
