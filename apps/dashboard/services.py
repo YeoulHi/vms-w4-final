@@ -111,9 +111,22 @@ def _get_color_for_metric(metric_type: str) -> str:
         str: Hex color code for the metric type
     """
     color_map = {
+        # Basic metrics
         "PAPER": "#4A90E2",  # Blue
         "BUDGET": "#50E3C2",  # Teal
         "STUDENT": "#F5A623",  # Orange
         "PROJECT": "#BD10E0",  # Purple
+        # Department KPI metrics
+        "EMPLOYMENT_RATE": "#7ED321",  # Green
+        "FULL_TIME_FACULTY": "#B8E986",  # Light Green
+        "VISITING_FACULTY": "#A8C959",  # Olive
+        "TECH_TRANSFER_REVENUE": "#F8A623",  # Dark Orange
+        "INTERNATIONAL_CONFERENCE": "#D0021B",  # Red
+        # Publication metrics
+        "PUBLICATION": "#417505",  # Dark Green
+        # Research metrics
+        "RESEARCH_BUDGET": "#FF6B6B",  # Light Red
+        # Student metrics
+        "STUDENT_COUNT": "#4ECDC4",  # Turquoise
     }
     return color_map.get(metric_type, "#999999")  # Default gray
