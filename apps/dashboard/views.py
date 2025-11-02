@@ -33,24 +33,37 @@ class DashboardView(TemplateView):
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         """Add default filter values to template context.
 
+        According to docs/4.userflow.md and docs/spec/003, the backend must
+        provide default filter values (최신 3개년, 전체 학과) through the template context.
+
         Returns:
-            dict: Context with default year and departments for initial chart display
+            dict: Context with default_filters containing years and departments
         """
         context = super().get_context_data(**kwargs)
 
-        # Default filter values - latest year and all departments
+        # Get all unique years from database, sorted descending
         from apps.ingest.models import MetricRecord
 
-        latest_year = (
-            MetricRecord.objects.values_list("year", flat=True).distinct().order_by("-year").first()
+        all_years = (
+            MetricRecord.objects.values_list("year", flat=True).distinct().order_by("-year")
         )
+        all_years_list = list(all_years)
+
+        # Get latest 3 years
+        latest_three_years = all_years_list[:3] if all_years_list else []
+
+        # Get all departments
         all_departments = (
             MetricRecord.objects.values_list("department", flat=True).distinct().order_by("department")
         )
 
-        context["default_year"] = latest_year
-        context["all_departments"] = list(all_departments)
-        context["selected_department"] = None  # Default to all departments
+        # Build default_filters context for frontend
+        context["default_filters"] = {
+            "years": latest_three_years,
+            "all_years": all_years_list,
+            "departments": list(all_departments),
+            "default_year": latest_three_years[0] if latest_three_years else None,
+        }
 
         return context
 

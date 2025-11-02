@@ -19,7 +19,11 @@ urlpatterns = [
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
-    path("dashboard/", include("apps.dashboard.urls")),
-    path("api/dashboard/", include("apps.dashboard.urls")),
+    # Dashboard page and API at /dashboard/ and /api/dashboard/
+    # The dashboard urls.py contains both page patterns and API patterns
+    # They are differentiated by path, not by separate includes
+    path("dashboard/", include("apps.dashboard.urls", namespace="dashboard")),
+    path("api/dashboard/", include("apps.dashboard.urls", namespace="api_dashboard")),
+    # Redirect root to dashboard
     path("", RedirectView.as_view(url="/dashboard/", permanent=True)),
 ]
